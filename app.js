@@ -15,7 +15,6 @@ const oh_field = process.env.OH_FIELD;
 const team_field = process.env.TEAM_FIELD;
 
 var count = 0;
-
 // this create an image folder in the app root directory
 fs.mkdir(path.join(__dirname, 'images/'), { recursive: true }, (err) => {
     if (err) {
@@ -23,7 +22,6 @@ fs.mkdir(path.join(__dirname, 'images/'), { recursive: true }, (err) => {
     }
     console.log('Directory created successfully!');
 });
-
 // get records and download the images to the temp images folder created
 function images(tableName, tableField, baseId) {
     var base = new Airtable({ apiKey: api_key }).base(baseId);
@@ -34,8 +32,6 @@ function images(tableName, tableField, baseId) {
             maxRecords: 1500,
             view: "Website Export",
             // fields: ["video_thumbnail"]
-
-
         }).eachPage(function page(records, fetchNextPage) {
             // This function (`page`) will get called for each page of records.
             records.forEach((record) => {
@@ -48,26 +44,20 @@ function images(tableName, tableField, baseId) {
                 }
                 count++;
 
-                // console.log(lnk);
-
                 const newFolder = {
                     url: lnk,
                     dest: '../../images', // will be saved to /path/to/dest/image.jpg
                 };
-
                 download.image(newFolder)
                     .then(({ filename }) => {
                         // console.log('Saved to', filename); // saved to /path/to/dest/image.jpg
                     })
                     .catch((err) => console.error(err))
-
             });
-
 
             // To fetch the next page of records, call `fetchNextPage`.
             // If there are more records, `page` will get called again.
             // If there are no more records, `done` will get called.
-
             fetchNextPage();
             console.log("Downloaded images =: " + count)
 

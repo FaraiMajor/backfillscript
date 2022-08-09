@@ -1,9 +1,11 @@
 const axios = require('axios');
-// const FormData = require('form-data');
 const fs = require('fs');
-// const stream = fs.createReadStream('images/1517872914483.jpeg');
+require('dotenv').config();
 
 
+const mediaUrl = process.env.MEDIAURL;
+const auth = process.env.AUTH;
+const wikiLink = process.env.WIKI_ENDPOINT
 
 var idData = [];
 
@@ -12,22 +14,21 @@ function getPost(postType) {
         try {
             const config = {
                 headers: {
-                    'Authorization': 'Basic d3RfYWRtaW46RiooT2d3byhGKU9SYm5SR1g5MUZ6QG1G',
+                    'Authorization': auth,
                     // 'Accept': 'application/json'
                 }
             };
             const n = 1
             while (n <= 15) {
-                const res = await axios.get(`http://localhost:8888/wikitongues/wp-json/wp/v2/${postType}?per_page=100&page=${n}`, config);
+                const res = await axios.get(`${wikiLink}${postType}?per_page=100&page=${n}`, config);
                 const result = JSON.parse(JSON.stringify(res.data));
 
 
                 for (list of result) {
                     idData.push(list.id)
-                        // console.log(list.id)
+                    console.log(list.id)
                 }
             }
-
         } catch (e) {
             console.log(e)
         }
@@ -35,20 +36,12 @@ function getPost(postType) {
     getID()
 }
 getPost('videos')
-
-// const form = new FormData();
-// form.append('image', stream);
-// var data = JSON.stringify({
-//     "acf": {
-//         "linkedin": "apo000 boys"
-//     }
-// });
-
+    //post images to wordpress
 var config = {
     method: 'post',
-    url: 'http://localhost:8888/wikitongues/wp-json/wp/v2/media',
+    url: mediaUrl,
     headers: {
-        'Authorization': 'Basic d3RfYWRtaW46RiooT2d3byhGKU9SYm5SR1g5MUZ6QG1G',
+        'Authorization': auth,
         'Content-Type': 'application/json',
         "Content-Disposition": 'form-data; filename="example.jpeg"',
         "Content-Type": "image/jpeg",

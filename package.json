@@ -1,0 +1,13 @@
+{
+  "dependencies": {
+    "airtable": "^0.11.4",
+    "axios": "^0.27.2",
+    "dotenv": "^16.0.1",
+    "form-data": "^4.0.0",
+    "image-downloader": "^4.3.0",
+    "wpapi": "^1.2.2"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.19"
+  }
+}

@@ -69,4 +69,4 @@ function images(tableName, tableField, baseId) {
 }
 
 images(team_table, team_field, team_baseid);
-// images(oh_table, oh_field, oh_baseid);
+images(oh_table, oh_field, oh_baseid);

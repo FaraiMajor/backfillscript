@@ -26,7 +26,7 @@ function getPost(postType) {
 
                 for (list of result) {
                     idData.push(list.id)
-                    console.log(list.id)
+                        // console.log(list.id)
                 }
             }
         } catch (e) {
@@ -35,18 +35,24 @@ function getPost(postType) {
     }
     getID()
 }
-getPost('videos')
-    //post images to wordpress
+getPost('team')
+
+const data = {
+    "acf": {
+        "profile_pic_url": fs.readFileSync('./images/1517872914483.jpeg')
+    }
+}
 var config = {
     method: 'post',
-    url: mediaUrl,
+    // url: mediaUrl,
+    url: "http://localhost:8888/wikitongues/wp-json/wp/v2/team/9950",
     headers: {
         'Authorization': auth,
         'Content-Type': 'application/json',
         "Content-Disposition": 'form-data; filename="example.jpeg"',
         "Content-Type": "image/jpeg",
     },
-    data: fs.readFileSync('./images/1517872914483.jpeg')
+    data: data //fs.readFileSync('./images/1517872914483.jpeg')
 };
 
 axios(config)

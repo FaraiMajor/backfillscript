@@ -44,15 +44,15 @@ const data = {
 }
 var config = {
     method: 'post',
-    // url: mediaUrl,
-    url: "http://localhost:8888/wikitongues/wp-json/wp/v2/team/9950",
+    url: mediaUrl,
+    // url: "http://localhost:8888/wikitongues/wp-json/wp/v2/team/9950",
     headers: {
         'Authorization': auth,
         'Content-Type': 'application/json',
         "Content-Disposition": 'form-data; filename="example.jpeg"',
         "Content-Type": "image/jpeg",
     },
-    data: data //fs.readFileSync('./images/1517872914483.jpeg')
+    data: fs.readFileSync('./images/1517872914483.jpeg')
 };
 
 axios(config)

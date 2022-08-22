@@ -50,7 +50,7 @@ function images(tableName, tableField, baseId) {
                 };
                 download.image(newFolder)
                     .then(({ filename }) => {
-                        // console.log('Saved to', filename); // saved to /path/to/dest/image.jpg
+                        console.log('Saved to', filename); // saved to /path/to/dest/image.jpg
                     })
                     .catch((err) => console.error(err))
             });
@@ -69,4 +69,4 @@ function images(tableName, tableField, baseId) {
 }
 
 images(team_table, team_field, team_baseid);
-images(oh_table, oh_field, oh_baseid);
+// images(oh_table, oh_field, oh_baseid);

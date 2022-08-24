@@ -2,7 +2,8 @@ var Airtable = require('airtable');
 const download = require('image-downloader');
 const fs = require('fs');
 const path = require('path');
-const { base } = require('airtable');
+const axios = require('axios');
+// const { base } = require('airtable');
 require('dotenv').config();
 
 
@@ -13,6 +14,9 @@ const team_table = process.env.TEAM_TABLE;
 const oh_table = process.env.OH_TABLE;
 const oh_field = process.env.OH_FIELD;
 const team_field = process.env.TEAM_FIELD;
+const mediaUrl = process.env.MEDIAURL;
+const auth = process.env.AUTH;
+const wikiLink = process.env.WIKI_ENDPOINT
 
 var count = 0;
 // this create an image folder in the app root directory
@@ -29,12 +33,13 @@ function images(tableName, tableField, baseId) {
     const getRecords = async() => {
         // try {
         table.select({
-            maxRecords: 1500,
+            maxRecords: 3,
             view: "Website Export",
             // fields: ["video_thumbnail"]
         }).eachPage(function page(records, fetchNextPage) {
             // This function (`page`) will get called for each page of records.
             records.forEach((record) => {
+                let title = record.get('post_title');
                 let data = (record.get(tableField));
                 let lnk = "";
                 if (data !== undefined) {
@@ -42,6 +47,8 @@ function images(tableName, tableField, baseId) {
                 } else {
                     return;
                 }
+                console.log(title)
+                console.log(lnk)
                 count++;
 
                 const newFolder = {
@@ -50,7 +57,9 @@ function images(tableName, tableField, baseId) {
                 };
                 download.image(newFolder)
                     .then(({ filename }) => {
-                        console.log('Saved to', filename); // saved to /path/to/dest/image.jpg
+                        console.log('Saved to', filename);
+                        const filePath = filename;
+                        return filePath // saved to /path/to/dest/image.jpg
                     })
                     .catch((err) => console.error(err))
             });

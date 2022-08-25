@@ -3,6 +3,8 @@ var Airtable = require('airtable');
 const fs = require('fs');
 const { image } = require('image-downloader');
 require('dotenv').config();
+const path = require('path');
+const download = require('image-downloader');
 
 
 const mediaUrl = process.env.MEDIAURL;
@@ -54,33 +56,35 @@ function handleAirtableRow() {
     var base = new Airtable({ apiKey: api_key }).base('appov2gguC5qBWGDq');
 
     base('CRM').select({
-        maxRecords: 5,
+        maxRecords: 1,
         view: "Website Export"
     }).eachPage(function page(records, fetchNextPage) {
-        // This function (`page`) will get called for each page of records.
+            // This function (`page`) will get called for each page of records.
+            try {
+                records.forEach(function(record) {
+                    const title = ('Retrieved', record.get('post_title'));
+                    const postTitle = title.replace(/\s+/g, '-');
+                    const imgData = ('Retrieved', record.get('profile_picture'));
+                    let imageurl = '';
+                    if (imgData !== undefined) {
+                        imageurl = imgData.substring(imgData.indexOf('(h') + 1, imgData.length - 1);
+                    } else {
+                        return;
+                    }
+                    console.log(postTitle);
+                    console.log(imageurl);
+                    downloadImage(imageurl);
+                    // const imagePostId = uploadImage(filePath);
+                    const targetPostID = lookUpTargetPost(postTitle)
+                    setImageForPost(imagePostId, targetPostID)
+                });
+            } catch (e) { console.log('error inside eachPage => ', e) }
+            fetchNextPage();
 
-        records.forEach(function(record) {
-            const title = ('Retrieved', record.get('post_title'));
-            const postTitle = title.replace(/\s+/g, '-');
-            const imgData = ('Retrieved', record.get('profile_picture'));
-            let imageurl = '';
-            if (imgData !== undefined) {
-                imageurl = imgData.substring(imgData.indexOf('(h') + 1, imgData.length - 1);
-            } else {
-                return;
-            }
-            console.log(postTitle);
-            console.log(imageurl);
-            // const filePath = downloadImage(imageurl);
-            // const imagePostId = uploadImage(filePath);
-            // const targetPostID = lookUpTargetPost(postTitle)
-            // setImageForPost(imagePostId, targetPostID)
+        },
+        function done(err) {
+            if (err) { console.error(err); return; }
         });
-        fetchNextPage();
-
-    }, function done(err) {
-        if (err) { console.error(err); return; }
-    });
 }
 
 handleAirtableRow();
@@ -95,15 +99,15 @@ function downloadImage(imageurl) {
         console.log('Directory created successfully!');
     });
 
-    const newFolder = {
+    const options = {
         url: imageurl,
         dest: '../../images',
     };
-    download.image(newFolder)
+    download.image(options)
         .then(({ filename }) => {
             console.log('Saved to', filename);
-            const filePath = filename
-            return filePath
+            const filePath = String(filename)
+            uploadImage(filePath)
         })
         .catch((err) => console.error(err))
 }
@@ -118,7 +122,7 @@ function uploadImage(filePath) {
         headers: {
             'Authorization': auth,
             'Content-Type': 'application/json',
-            "Content-Disposition": 'form-data; filename="example.jpeg"',
+            "Content-Disposition": 'form-data; filename="image.jpeg"',
             "Content-Type": "image/jpeg",
         },
         data: fs.readFileSync(filePath)
@@ -127,6 +131,7 @@ function uploadImage(filePath) {
     axios(config)
         .then(function(response) {
             const imagePostId = JSON.stringify(response.data.id);
+            console.log("Image ID " + imagePostId)
             return imagePostId
         })
         .catch(function(error) {
@@ -147,7 +152,7 @@ function lookUpTargetPost(postTitle) {
     axios(config)
         .then(function(response) {
             const targetPostID = (JSON.stringify(response.data[0].id));
-            console.log(targetPostID)
+            console.log("post id " + targetPostID)
             return targetPostID;
         })
         .catch(function(error) {

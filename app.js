@@ -58,8 +58,7 @@ function images(tableName, tableField, baseId) {
                 download.image(newFolder)
                     .then(({ filename }) => {
                         console.log('Saved to', filename);
-                        const filePath = filename;
-                        return filePath // saved to /path/to/dest/image.jpg
+
                     })
                     .catch((err) => console.error(err))
             });
@@ -79,3 +78,24 @@ function images(tableName, tableField, baseId) {
 
 images(team_table, team_field, team_baseid);
 // images(oh_table, oh_field, oh_baseid);
+
+// var config = {
+//     method: 'post',
+//     url: mediaUrl,
+//     headers: {
+//         'Authorization': auth,
+//         'Content-Type': 'application/json',
+//         "Content-Disposition": 'form-data; filename="example.jpeg"',
+//         "Content-Type": "image/jpeg",
+//     },
+//     data: fs.readFileSync('./images/JamieJoyceHeadshot.jpg')
+// };
+
+// axios(config)
+//     .then(function(response) {
+//         const imagePostId = response.data;
+//         console.log(imagePostId)
+//     })
+//     .catch(function(error) {
+//         console.log(error);
+//     });

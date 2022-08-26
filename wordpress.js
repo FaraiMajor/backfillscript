@@ -73,9 +73,9 @@ function handleAirtableRow() {
                     }
                     console.log(postTitle);
                     console.log(imageurl);
-                    downloadImage(imageurl);
-                    // const imagePostId = uploadImage(filePath);
-                    const targetPostID = lookUpTargetPost(postTitle)
+                    let filePath = downloadImage(imageurl);
+                    let imagePostId = uploadImage(filePath);
+                    let targetPostID = lookUpTargetPost(postTitle)
                     setImageForPost(imagePostId, targetPostID)
                 });
             } catch (e) { console.log('error inside eachPage => ', e) }
@@ -91,99 +91,102 @@ handleAirtableRow();
 
 
 //-----------------------------------------------------------------------------------------
-function downloadImage(imageurl) {
-    fs.mkdir(path.join(__dirname, 'images/'), { recursive: true }, (err) => {
-        if (err) {
-            return console.error(err);
-        }
-        console.log('Directory created successfully!');
-    });
-
-    const options = {
-        url: imageurl,
-        dest: '../../images',
-    };
-    download.image(options)
-        .then(({ filename }) => {
-            console.log('Saved to', filename);
-            const filePath = String(filename)
-            uploadImage(filePath)
-        })
-        .catch((err) => console.error(err))
-}
-
-
-//-----------------------------------------------------------------------------------------
-function uploadImage(filePath) {
-
-    var config = {
-        method: 'post',
-        url: mediaUrl,
-        headers: {
-            'Authorization': auth,
-            'Content-Type': 'application/json',
-            "Content-Disposition": 'form-data; filename="image.jpeg"',
-            "Content-Type": "image/jpeg",
-        },
-        data: fs.readFileSync(filePath)
-    };
-
-    axios(config)
-        .then(function(response) {
-            const imagePostId = JSON.stringify(response.data.id);
-            console.log("Image ID " + imagePostId)
-            return imagePostId
-        })
-        .catch(function(error) {
-            console.log(error);
+async function downloadImage(imageurl) {
+    try {
+        fs.mkdir(path.join(__dirname, 'images/'), { recursive: true }, (err) => {
+            if (err) {
+                return console.error(err);
+            }
+            console.log('Directory created successfully!');
         });
-}
 
+        const options = {
+            url: imageurl,
+            dest: '../../images',
+        };
+        await download.image(options)
+            .then(({ filename }) => {
+                console.log('Saved to', filename);
+                const filePath = String(filename)
+                return filePath
+            })
 
-//-----------------------------------------------------------------------------------------
-function lookUpTargetPost(postTitle) {
-    const config = {
-        url: `http://localhost:8888/wikitongues/wp-json/wp/v2/team?slug=${postTitle}`,
-        headers: {
-            'Authorization': auth,
-            'Content-Type': 'application/json;charset=UTF-8',
-        }
-    };
-    axios(config)
-        .then(function(response) {
-            const targetPostID = (JSON.stringify(response.data[0].id));
-            console.log("post id " + targetPostID)
-            return targetPostID;
-        })
-        .catch(function(error) {
-            console.log(error);
-        });
-}
-
-
-//-----------------------------------------------------------------------------------------
-function setImageForPost(imagePostId, targetPostID) {
-    const data = {
-        "acf": {
-            "profile_pic_url": imagePostId
-        }
+    } catch (e) {
+        console.log(e)
     }
+}
 
-    var config = {
-        method: 'post',
-        // url: mediaUrl,
-        url: `http://localhost:8888/wikitongues/wp-json/wp/v2/team/${targetPostID}`,
-        headers: {
-            'Authorization': auth,
-            'Content-Type': 'application/json',
-        },
-        data: data
-    };
-    axios(config)
-        .then(function(response) {
-            console.log(JSON.stringify(response.data));
-        })
-        .catch(function(error) {
-            console.log(error);
-        });
+
+//-----------------------------------------------------------------------------------------
+async function uploadImage(filePath) {
+    try {
+        var config = {
+            method: 'post',
+            url: mediaUrl,
+            headers: {
+                'Authorization': auth,
+                'Content-Type': 'application/json',
+                "Content-Disposition": 'form-data; filename="image.jpeg"',
+                "Content-Type": "image/jpeg",
+            },
+            data: fs.readFileSync(filePath)
+        };
+
+        const res = await axios(config)
+
+        const imagePostId = JSON.stringify(res.data.id);
+        console.log("image id " + imagePostId)
+        return imagePostId
+
+    } catch (e) {
+        console.log("ERROR " + e)
+    }
+}
+
+
+//-----------------------------------------------------------------------------------------
+async function lookUpTargetPost(postTitle) {
+    try {
+        const config = {
+            url: `http://localhost:8888/wikitongues/wp-json/wp/v2/team?slug=${postTitle}`,
+            headers: {
+                'Authorization': auth,
+                'Content-Type': 'application/json;charset=UTF-8',
+            }
+        };
+        let res = await axios(config)
+
+        const targetPostID = await JSON.stringify(res.data[0].id);
+        console.log("post id " + targetPostID)
+        return targetPostID;
+    } catch (e) {
+        console.log(e)
+    }
+}
+
+
+//-----------------------------------------------------------------------------------------
+async function setImageForPost(imagePostId, targetPostID) {
+    try {
+        const data = {
+            "acf": {
+                "profile_pic_url": imagePostId
+            }
+        }
+
+        var config = {
+            method: 'post',
+            // url: mediaUrl,
+            url: `http://localhost:8888/wikitongues/wp-json/wp/v2/team/${targetPostID}`,
+            headers: {
+                'Authorization': auth,
+                'Content-Type': 'application/json',
+            },
+            data: data
+        };
+        let res = await axios(config)
+        console.log(JSON.stringify(res.data));
+    } catch (e) {
+        console.log(e)
+    }
 }

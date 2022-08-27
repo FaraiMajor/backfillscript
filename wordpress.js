@@ -7,53 +7,16 @@ const path = require('path');
 const download = require('image-downloader');
 
 
+
 const mediaUrl = process.env.MEDIAURL;
 const auth = process.env.AUTH;
 const wikiLink = process.env.WIKI_ENDPOINT
 const api_key = process.env.AIRTABLE_APIKEY;
-
-
-// function getPost(postType) {
-//     const getID = async() => {
-//         try {
-//             const config = {
-//                 headers: {
-//                     'Authorization': auth,
-//                     // 'Accept': 'application/json'
-//                 }
-//             };
-//             const n = 1
-//             while (n <= 15) {
-//                 const res = await axios.get(`${wikiLink}${postType}?per_page=100&page=${n}`, config);
-//                 const result = JSON.parse(JSON.stringify(res.data));
-
-//                 for (list of result) {
-//                     idData.push(list.id)
-//                         // console.log(list.id)
-//                 }
-//             }
-//         } catch (e) {
-//             console.log(e)
-//         }
-//     }
-//     getID()
-// }
-// getPost('team')
-
-
-
-// axios(config)
-//     .then(function(response) {
-//         console.log(JSON.stringify(response.data));
-//     })
-//     .catch(function(error) {
-//         console.log(error);
-//     });
-
+const teamid = process.env.TEAM_BASEID;
 
 //-----------------------------------------------------------------------------------------
 function handleAirtableRow() {
-    var base = new Airtable({ apiKey: api_key }).base('appov2gguC5qBWGDq');
+    var base = new Airtable({ apiKey: api_key }).base(teamid);
 
     base('CRM').select({
         maxRecords: 1,
@@ -108,7 +71,8 @@ async function downloadImage(imageurl) {
             .then(({ filename }) => {
                 console.log('Saved to', filename);
                 const filePath = String(filename)
-                return filePath
+                return filePath;
+
             })
 
     } catch (e) {
@@ -156,7 +120,7 @@ async function lookUpTargetPost(postTitle) {
         };
         let res = await axios(config)
 
-        const targetPostID = await JSON.stringify(res.data[0].id);
+        const targetPostID = JSON.stringify(res.data[0].id);
         console.log("post id " + targetPostID)
         return targetPostID;
     } catch (e) {
@@ -185,7 +149,7 @@ async function setImageForPost(imagePostId, targetPostID) {
             data: data
         };
         let res = await axios(config)
-        console.log(JSON.stringify(res.data));
+        console.log(JSON.parse(JSON.stringify(res.data)));
     } catch (e) {
         console.log(e)
     }

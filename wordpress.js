@@ -13,21 +13,28 @@ const auth = process.env.AUTH;
 const wikiLink = process.env.WIKI_ENDPOINT
 const api_key = process.env.AIRTABLE_APIKEY;
 const teamid = process.env.TEAM_BASEID;
+const ohId = process.env.OH_BASEID
+const teambase = process.env.TEAM_TABLE
+const oralHistbase = process.env.OH_TABLE
+const post_title = process.env.TITLE
+const teamField = process.env.TEAM_FIELD
+const ohField = process.env.OH_FIELD
+
 
 //-----------------------------------------------------------------------------------------
-function handleAirtableRow() {
-    var base = new Airtable({ apiKey: api_key }).base(teamid);
+function handleAirtableRow(baseid, base, post_title, urlField) {
+    var base = new Airtable({ apiKey: api_key }).base(baseid);
 
-    base('CRM').select({
+    base(base).select({
         maxRecords: 1,
         view: "Website Export"
     }).eachPage(function page(records, fetchNextPage) {
             // This function (`page`) will get called for each page of records.
             try {
                 records.forEach(function(record) {
-                    const title = ('Retrieved', record.get('post_title'));
+                    const title = ('Retrieved', record.get(post_title));
                     const postTitle = title.replace(/\s+/g, '-');
-                    const imgData = ('Retrieved', record.get('profile_picture'));
+                    const imgData = ('Retrieved', record.get(urlField));
                     let imageurl = '';
                     if (imgData !== undefined) {
                         imageurl = imgData.substring(imgData.indexOf('(h') + 1, imgData.length - 1);
@@ -50,7 +57,8 @@ function handleAirtableRow() {
         });
 }
 
-handleAirtableRow();
+handleAirtableRow(teamid, teambase, post_title, teamField);
+handleAirtableRow(ohId, oralHistbase, post_title, ohField);
 
 
 //-----------------------------------------------------------------------------------------

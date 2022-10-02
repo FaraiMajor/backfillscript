@@ -1,166 +1,197 @@
 const axios = require('axios');
-var Airtable = require('airtable');
+const Airtable = require('airtable');
 const fs = require('fs');
-const { image } = require('image-downloader');
-require('dotenv').config();
 const path = require('path');
 const download = require('image-downloader');
+const os = require('os');
+const URL = require('url').URL;
+const yargs = require('yargs/yargs');
 
+require('dotenv').config();
 
+hideBin = argv => argv.slice(2);
+const argv = yargs(hideBin(process.argv)).argv;
 
-const mediaUrl = process.env.MEDIAURL;
-const auth = process.env.AUTH;
-const wikiLink = process.env.WIKI_ENDPOINT
-const api_key = process.env.AIRTABLE_APIKEY;
-const teamid = process.env.TEAM_BASEID;
-const ohId = process.env.OH_BASEID
-const teambase = process.env.TEAM_TABLE
-const oralHistbase = process.env.OH_TABLE
-const post_title = process.env.TITLE
-const teamField = process.env.TEAM_FIELD
-const ohField = process.env.OH_FIELD
+// From args:
+const wtWebsiteHost = argv.host || 'http://localhost:8888/wikitongues';
+const table = argv.table || 'CRM';
+const view = argv.view || 'Website Export';
+const maxRecords = argv.maxRecords || 1;
+const allRecords = argv.all;
+const postType = argv.postType || 'team';
+const imageFieldAirtable = argv.airtableField || 'profile_picture';
+const imageFieldWP = argv.wpField || 'profile_pic_url';
+const wpUser = argv.wpUser || process.env.WP_USER || 'wt-admin';
+const wpPassword = argv.wpPassword || process.env.WP_PASSWORD || console.error(
+    'Wordpress Admin password required. Please provide --wp-password or set WP_PASSWORD'
+);
+const apiKey = argv.apiKey || process.env.APIKEY || console.error(
+    'Airtable API key required. Please provide --api-key or set APIKEY'
+);
+const baseId = argv.baseId || process.env.BASE || console.error(
+    'Airtable Base ID required. Please provide --base-id or set BASE'
+);
+const dryRun = argv.dryRun;
 
-
-//-----------------------------------------------------------------------------------------
-function handleAirtableRow(baseid, base, post_title, urlField) {
-    var base = new Airtable({ apiKey: api_key }).base(baseid);
-
-    base(base).select({
-        maxRecords: 1,
-        view: "Website Export"
-    }).eachPage(function page(records, fetchNextPage) {
-            // This function (`page`) will get called for each page of records.
-            try {
-                records.forEach(function(record) {
-                    const title = ('Retrieved', record.get(post_title));
-                    const postTitle = title.replace(/\s+/g, '-');
-                    const imgData = ('Retrieved', record.get(urlField));
-                    let imageurl = '';
-                    if (imgData !== undefined) {
-                        imageurl = imgData.substring(imgData.indexOf('(h') + 1, imgData.length - 1);
-                    } else {
-                        return;
-                    }
-                    console.log(postTitle);
-                    console.log(imageurl);
-                    let filePath = downloadImage(imageurl);
-                    let imagePostId = uploadImage(filePath);
-                    let targetPostID = lookUpTargetPost(postTitle)
-                    setImageForPost(imagePostId, targetPostID)
-                });
-            } catch (e) { console.log('error inside eachPage => ', e) }
-            fetchNextPage();
-
-        },
-        function done(err) {
-            if (err) { console.error(err); return; }
-        });
+if (!apiKey || !baseId || !wpPassword) {
+    process.exit(1);
 }
 
-handleAirtableRow(teamid, teambase, post_title, teamField);
-handleAirtableRow(ohId, oralHistbase, post_title, ohField);
+if (dryRun) {
+    console.info('Dry run: will not download images from Airtable');
+}
 
+if (!allRecords) {
+    console.info(`Processing ${maxRecords} posts(s). To process all posts, add the --all flag.`);
+}
+
+// Constants:
+const POST_TITLE_FIELD = 'post_title';
+
+let count = 0;
 
 //-----------------------------------------------------------------------------------------
-async function downloadImage(imageurl) {
-    try {
-        fs.mkdir(path.join(__dirname, 'images/'), { recursive: true }, (err) => {
-            if (err) {
-                return console.error(err);
-            }
-            console.log('Directory created successfully!');
-        });
-
-        const options = {
-            url: imageurl,
-            dest: '../../images',
-        };
-        await download.image(options)
-            .then(({ filename }) => {
-                console.log('Saved to', filename);
-                const filePath = String(filename)
-                return filePath;
-
-            })
-
-    } catch (e) {
-        console.log(e)
+async function handleAirtableRow(record) {
+    const title = record.get(POST_TITLE_FIELD);
+    const postTitle = title.replace(/\s+/g, '-');
+    const imgData = record.get(imageFieldAirtable);
+    let imageurl;
+    if (imgData !== undefined) {
+        imageurl = imgData.substring(imgData.indexOf('(h') + 1, imgData.length - 1);
+    } else {
+        return;
     }
+    console.log(`Processing ${postTitle}...`);
+
+    try {
+        new URL(imageurl);
+    } catch (e) {
+        console.warn(`Invalid image url ${imageurl}`);
+        return;
+    }
+
+    try {
+        const targetPostID = await lookUpTargetPost(postTitle);
+        if (targetPostID === undefined) {
+            console.warn(`No post exists for ${postTitle}`);
+            return;
+        }
+
+        if (dryRun) {
+            return;
+        }
+
+        const filePath = await downloadImage(imageurl, os.tmpdir());
+        const imagePostId = await uploadImage(filePath);
+
+        await setImageForPost(imagePostId, targetPostID);
+
+        count++;
+    } catch (e) {
+        console.error(`Image not uploaded for ${postTitle} - an error occured.`);
+        console.error(e);
+        return;
+    }
+}
+
+async function handlePage(records) {
+    try {
+        for (const record of records) {
+            await handleAirtableRow(record);
+        }
+    } catch (e) {
+        console.error('error inside eachPage => ', e);
+        process.exit(1);
+    }
+}
+
+//-----------------------------------------------------------------------------------------
+async function downloadImage(url, dest) {
+    const options = { url, dest };
+    return (await download.image(options)).filename;
 }
 
 
 //-----------------------------------------------------------------------------------------
 async function uploadImage(filePath) {
-    try {
-        var config = {
-            method: 'post',
-            url: mediaUrl,
-            headers: {
-                'Authorization': auth,
-                'Content-Type': 'application/json',
-                "Content-Disposition": 'form-data; filename="image.jpeg"',
-                "Content-Type": "image/jpeg",
-            },
-            data: fs.readFileSync(filePath)
-        };
+    var config = {
+        method: 'post',
+        url: `${wtWebsiteHost}/wp-json/wp/v2/media`,
+        headers: {
+            'Content-Type': 'application/json',
+            "Content-Disposition": 'form-data; filename="image.jpeg"',
+            "Content-Type": "image/jpeg",
+        },
+        auth: {
+            username: wpUser,
+            password: wpPassword
+        },
+        data: fs.readFileSync(filePath)
+    };
 
-        const res = await axios(config)
+    const res = await axios(config);
 
-        const imagePostId = JSON.stringify(res.data.id);
-        console.log("image id " + imagePostId)
-        return imagePostId
-
-    } catch (e) {
-        console.log("ERROR " + e)
-    }
+    const imagePostId = JSON.stringify(res.data.id);
+    return imagePostId;
 }
 
 
 //-----------------------------------------------------------------------------------------
 async function lookUpTargetPost(postTitle) {
-    try {
-        const config = {
-            url: `http://localhost:8888/wikitongues/wp-json/wp/v2/team?slug=${postTitle}`,
-            headers: {
-                'Authorization': auth,
-                'Content-Type': 'application/json;charset=UTF-8',
-            }
-        };
-        let res = await axios(config)
+    const config = {
+        url: `${wtWebsiteHost}/wp-json/wp/v2/${postType}?slug=${postTitle}`,
+        headers: {
+            'Content-Type': 'application/json;charset=UTF-8',
+        },
+        auth: {
+            username: wpUser,
+            password: wpPassword
+        }
+    };
+    let res = await axios(config)
 
-        const targetPostID = JSON.stringify(res.data[0].id);
-        console.log("post id " + targetPostID)
-        return targetPostID;
-    } catch (e) {
-        console.log(e)
+    if (!res.data || res.data.length === 0) {
+        return undefined;
     }
+
+    const targetPostID = JSON.stringify(res.data[0].id);
+    return targetPostID;
 }
 
 
 //-----------------------------------------------------------------------------------------
-async function setImageForPost(imagePostId, targetPostID) {
-    try {
-        const data = {
-            "acf": {
-                "profile_pic_url": imagePostId
-            }
+async function setImageForPost(imagePostId, targetPostId) {
+    const data = {
+        'acf': {
+            [imageFieldWP]: imagePostId
         }
-
-        var config = {
-            method: 'post',
-            // url: mediaUrl,
-            url: `http://localhost:8888/wikitongues/wp-json/wp/v2/team/${targetPostID}`,
-            headers: {
-                'Authorization': auth,
-                'Content-Type': 'application/json',
-            },
-            data: data
-        };
-        let res = await axios(config)
-        console.log(JSON.parse(JSON.stringify(res.data)));
-    } catch (e) {
-        console.log(e)
     }
+
+    var config = {
+        method: 'post',
+        url: `${wtWebsiteHost}/wp-json/wp/v2/${postType}/${targetPostId}`,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        auth: {
+            username: wpUser,
+            password: wpPassword
+        },
+        data
+    };
+    await axios(config)
 }
 
-//tbc
+const base = new Airtable({ apiKey }).base(baseId);
+
+const selectParams = allRecords ? { view } : { view, maxRecords };
+
+base(table).select(selectParams).eachPage(function page(records, fetchNextPage) {
+    handlePage(records).then(fetchNextPage);
+}).then(error => {
+    if (error) {
+        console.error(error);
+        process.exit(1);
+    }
+    console.log(`Done! Processed ${count} posts.`);
+});
